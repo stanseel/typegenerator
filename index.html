@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gooey pixel type</title>
+<style>
+:root{
+  --bg:#F7F6F2; --panel:#FFFFFF; --ink:#141414; --sub:#6E6C66; --line:#DDDAD2;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#131312; --panel:#1C1C1A; --ink:#EDEBE6; --sub:#8F8D86; --line:#33322F; }
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  font-size:13px; line-height:1.5;
+}
+.wrap{max-width:880px; margin:0 auto; padding:40px 24px 64px;}
+header{margin-bottom:28px;}
+h1{font-size:16px; font-weight:600; margin:0 0 4px; letter-spacing:0.02em;}
+header p{margin:0; color:var(--sub);}
+textarea{
+  width:100%; background:var(--panel); color:var(--ink);
+  border:1px solid var(--line); border-radius:8px;
+  font:inherit; font-size:15px; padding:10px 12px; resize:vertical;
+}
+textarea:focus{outline:2px solid var(--ink); outline-offset:1px;}
+.controls{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:12px 28px; margin:20px 0;
+}
+.ctl{display:flex; align-items:center; gap:10px;}
+.ctl label{color:var(--sub); white-space:nowrap; min-width:96px;}
+.ctl input[type=range]{flex:1; accent-color:var(--ink);}
+.ctl .val{min-width:28px; text-align:right;}
+.ctl select{
+  flex:1; font:inherit; background:var(--panel); color:var(--ink);
+  border:1px solid var(--line); border-radius:6px; padding:6px 8px;
+}
+.ctl input[type=checkbox]{width:15px; height:15px; accent-color:var(--ink);}
+.buttons{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; align-items:center;}
+button{
+  font:inherit; background:var(--panel); color:var(--ink);
+  border:1px solid var(--line); border-radius:6px;
+  padding:8px 14px; cursor:pointer;
+}
+button:hover{border-color:var(--ink);}
+button:active{transform:scale(0.98);}
+#msg{color:var(--sub);}
+#prev{
+  background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  padding:32px; display:flex; justify-content:center; min-height:160px;
+}
+footer{margin-top:20px; color:var(--sub); font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Gooey pixel type</h1>
+  <p>Pixelraster, samengesmolten en afgerond, met metaball-bruggen. Export als zuiver vectorpad.</p>
+</header>
+
+<textarea id="txt" rows="2">best
+parts</textarea>
+
+<div class="controls">
+  <div class="ctl"><label for="cs">Kast</label>
+    <select id="cs">
+      <option value="as">Zoals getypt</option>
+      <option value="lower">Kleine letters</option>
+      <option value="upper">Hoofdletters</option>
+    </select>
+  </div>
+  <div class="ctl"><label for="rnd">Rondheid</label><input type="range" id="rnd" min="0" max="50" step="1" value="50"><span class="val" id="rndv">50</span></div>
+  <div class="ctl"><label for="sp">Letterafstand</label><input type="range" id="sp" min="-2" max="3" step="1" value="0"><span class="val" id="spv">0</span></div>
+  <div class="ctl"><label for="lg">Regelafstand</label><input type="range" id="lg" min="-4" max="4" step="1" value="1"><span class="val" id="lgv">1</span></div>
+  <div class="ctl"><label for="sc">Scramble</label><input type="range" id="sc" min="0" max="3" step="1" value="0"><span class="val" id="scv">0</span></div>
+  <div class="ctl"><label for="bw">Brugdikte</label><input type="range" id="bw" min="20" max="90" step="1" value="60"><span class="val" id="bwv">60</span></div>
+  <div class="ctl"><label for="br">Bruggen</label><input type="checkbox" id="br" checked></div>
+</div>
+
+<div class="buttons">
+  <button id="reroll">Nieuwe scramble</button>
+  <button id="dl">Download SVG</button>
+  <button id="png">Download PNG</button>
+  <button id="cp">Kopieer SVG-code</button>
+  <span id="msg"></span>
+</div>
+
+<div id="prev"></div>
+
+<footer>Letters a&#8211;z en A&#8211;Z op een 5&#215;7 raster. Negatieve afstanden laten letters en regels in elkaar smelten. Gemaakt met Claude.</footer>
+</div>
+
+<script>
+(function(){
+var NL=String.fromCharCode(10);
+var RAW={
+a:[".....",".....",".###.","....#",".####","#...#",".####"],
+b:["#....","#....","####.","#...#","#...#","#...#","####."],
+c:[".....",".....",".####","#....","#....","#....",".####"],
+d:["....#","....#",".####","#...#","#...#","#...#",".####"],
+e:[".....",".....",".###.","#...#","#####","#....",".####"],
+f:["..##.",".#...","####.",".#...",".#...",".#...",".#..."],
+g:[".....",".....",".####","#...#",".####","....#",".###."],
+h:["#....","#....","####.","#...#","#...#","#...#","#...#"],
+i:["..#..",".....","..#..","..#..","..#..","..#..","..#.."],
+j:["...#.",".....","...#.","...#.","...#.","#..#.",".##.."],
+k:["#....","#....","#..#.","#.#..","##...","#.#..","#..#."],
+l:[".#...",".#...",".#...",".#...",".#...",".#...","..##."],
+m:[".....",".....","##.#.","#.#.#","#.#.#","#.#.#","#.#.#"],
+n:[".....",".....","####.","#...#","#...#","#...#","#...#"],
+o:[".....",".....",".###.","#...#","#...#","#...#",".###."],
+p:[".....",".....","####.","#...#","####.","#....","#...."],
+q:[".....",".....",".####","#...#",".####","....#","....#"],
+r:[".....",".....","#.##.","##...","#....","#....","#...."],
+s:[".....",".....",".####","#....",".###.","....#","####."],
+t:[".#...",".#...","####.",".#...",".#...",".#...","..##."],
+u:[".....",".....","#...#","#...#","#...#","#...#",".####"],
+v:[".....",".....","#...#","#...#","#...#",".#.#.","..#.."],
+w:[".....",".....","#.#.#","#.#.#","#.#.#","#.#.#",".#.#."],
+x:[".....",".....","#...#",".#.#.","..#..",".#.#.","#...#"],
+y:[".....",".....","#...#","#...#",".####","....#",".###."],
+z:[".....",".....","#####","...#.","..#..",".#...","#####"],
+A:[".###.","#...#","#...#","#####","#...#","#...#","#...#"],
+B:["####.","#...#","#...#","####.","#...#","#...#","####."],
+C:[".####","#....","#....","#....","#....","#....",".####"],
+D:["####.","#...#","#...#","#...#","#...#","#...#","####."],
+E:["#####","#....","#....","####.","#....","#....","#####"],
+F:["#####","#....","#....","####.","#....","#....","#...."],
+G:[".####","#....","#....","#.###","#...#","#...#",".####"],
+H:["#...#","#...#","#...#","#####","#...#","#...#","#...#"],
+I:[".###.","..#..","..#..","..#..","..#..","..#..",".###."],
+J:["..###","...#.","...#.","...#.","...#.","#..#.",".##.."],
+K:["#...#","#..#.","#.#..","##...","#.#..","#..#.","#...#"],
+L:["#....","#....","#....","#....","#....","#....","#####"],
+M:["#...#","##.##","#.#.#","#.#.#","#...#","#...#","#...#"],
+N:["#...#","##..#","#.#.#","#..##","#...#","#...#","#...#"],
+O:[".###.","#...#","#...#","#...#","#...#","#...#",".###."],
+P:["####.","#...#","#...#","####.","#....","#....","#...."],
+Q:[".###.","#...#","#...#","#...#","#.#.#","#..#.",".##.#"],
+R:["####.","#...#","#...#","####.","#.#..","#..#.","#...#"],
+S:[".####","#....","#....",".###.","....#","....#","####."],
+T:["#####","..#..","..#..","..#..","..#..","..#..","..#.."],
+U:["#...#","#...#","#...#","#...#","#...#","#...#",".###."],
+V:["#...#","#...#","#...#","#...#","#...#",".#.#.","..#.."],
+W:["#...#","#...#","#...#","#.#.#","#.#.#","##.##","#...#"],
+X:["#...#","#...#",".#.#.","..#..",".#.#.","#...#","#...#"],
+Y:["#...#","#...#",".#.#.","..#..","..#..","..#..","..#.."],
+Z:["#####","....#","...#.","..#..",".#...","#....","#####"]};
+var FONT={};
+for(var key in RAW){
+  var rows=[],mn=5,mx=-1;
+  for(var ri=0;ri<7;ri++){
+    var b=0,str=RAW[key][ri];
+    for(var c=0;c<5;c++){if(str.charAt(c)==="#"){b|=1<<c;if(c<mn)mn=c;if(c>mx)mx=c;}}
+    rows.push(b);
+  }
+  FONT[key]={rows:rows,mn:mn,mx:mx};
+}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+var seed=12345;
+function buildCells(text,spacing,lineGap,scr,mode){
+  var rng=mulberry32(seed);var cells={};var count=0;
+  if(mode==="lower")text=text.toLowerCase();
+  if(mode==="upper")text=text.toUpperCase();
+  var lines=text.split(NL);
+  for(var li=0;li<lines.length;li++){
+    var x=0,y0=li*(7+lineGap),line=lines[li];
+    for(var ci=0;ci<line.length;ci++){
+      var ch=line.charAt(ci);
+      if(ch===" "){x+=3;continue;}
+      var g=FONT[ch]||FONT[ch.toLowerCase()]||FONT[ch.toUpperCase()];
+      var dx=scr?Math.round((rng()*2-1)*scr):0;
+      var dy=scr?Math.round((rng()*2-1)*scr):0;
+      if(!g){x+=2;continue;}
+      for(var r=0;r<7;r++)for(var cc=g.mn;cc<=g.mx;cc++)
+        if((g.rows[r]>>cc)&1){cells[(x+cc-g.mn+dx)+","+(y0+r+dy)]=1;count++;}
+      x+=(g.mx-g.mn+1)+spacing;
+    }
+  }
+  return {cells:cells,count:count};
+}
+var DX=[1,0,-1,0],DY=[0,1,0,-1];
+function traceLoops(cells){
+  function has(x,y){return cells[x+","+y]===1;}
+  var out={},all=[];
+  function add(x,y,d){var k=x+","+y;if(!out[k])out[k]=[];out[k].push({d:d,used:false});all.push([x,y,d]);}
+  for(var key in cells){
+    var p=key.split(",");var cx=+p[0],cy=+p[1];
+    if(!has(cx,cy-1))add(cx,cy,0);
+    if(!has(cx+1,cy))add(cx+1,cy,1);
+    if(!has(cx,cy+1))add(cx+1,cy+1,2);
+    if(!has(cx-1,cy))add(cx,cy+1,3);
+  }
+  function take(x,y,d){var arr=out[x+","+y];if(!arr)return false;
+    for(var i=0;i<arr.length;i++)if(arr[i].d===d&&!arr[i].used){arr[i].used=true;return true;}
+    return false;}
+  var loops=[];
+  for(var e=0;e<all.length;e++){
+    var x0=all[e][0],y0=all[e][1],d0=all[e][2];
+    var arr0=out[x0+","+y0],e0=null;
+    for(var i=0;i<arr0.length;i++)if(arr0[i].d===d0&&!arr0[i].used){e0=arr0[i];break;}
+    if(!e0)continue;
+    e0.used=true;
+    var pts=[[x0,y0]],x=x0,y=y0,d=d0,guard=0;
+    while(guard++<200000){
+      x+=DX[d];y+=DY[d];
+      if(x===x0&&y===y0)break;
+      pts.push([x,y]);
+      var nd=-1,cands=[(d+1)%4,d,(d+3)%4];
+      for(var j=0;j<3;j++){if(take(x,y,cands[j])){nd=cands[j];break;}}
+      if(nd<0)break;
+      d=nd;
+    }
+    if(pts.length>2)loops.push(pts);
+  }
+  return loops;
+}
+function findBridges(cells){
+  function has(x,y){return cells[x+","+y]===1;}
+  var pts=[];
+  for(var key in cells){
+    var p=key.split(",");var x=+p[0],y=+p[1];
+    if(has(x+1,y+1)&&!has(x+1,y)&&!has(x,y+1))pts.push([x+1,y+1,1]);
+    if(has(x-1,y+1)&&!has(x-1,y)&&!has(x,y+1))pts.push([x,y+1,-1]);
+  }
+  return pts;
+}
+function compress(pts){
+  var n=pts.length,res=[];
+  for(var i=0;i<n;i++){
+    var p=pts[(i-1+n)%n],v=pts[i],q=pts[(i+1)%n];
+    if((v[0]-p[0])*(q[1]-v[1])!==(v[1]-p[1])*(q[0]-v[0]))res.push(v);
+  }
+  return res;
+}
+function f1(n){return Math.round(n*100)/100;}
+function loopPath(pts,R,S){
+  var n=pts.length;if(n<3)return"";
+  var d="";
+  for(var i=0;i<n;i++){
+    var pv=pts[(i-1+n)%n],v=pts[i],nx=pts[(i+1)%n];
+    var ax=Math.sign(v[0]-pv[0]),ay=Math.sign(v[1]-pv[1]);
+    var bx=Math.sign(nx[0]-v[0]),by=Math.sign(nx[1]-v[1]);
+    var li=(Math.abs(v[0]-pv[0])+Math.abs(v[1]-pv[1]))/2;
+    var lo=(Math.abs(nx[0]-v[0])+Math.abs(nx[1]-v[1]))/2;
+    var r=Math.min(R,li,lo);
+    var sx=f1((v[0]-ax*r)*S),sy=f1((v[1]-ay*r)*S);
+    var ex=f1((v[0]+bx*r)*S),ey=f1((v[1]+by*r)*S);
+    var cross=ax*by-ay*bx;
+    d+=(i===0?"M":"L")+sx+" "+sy;
+    if(r>0.001&&cross!==0)d+="A"+f1(r*S)+" "+f1(r*S)+" 0 0 "+(cross>0?1:0)+" "+ex+" "+ey;
+    else d+="L"+ex+" "+ey;
+  }
+  return d+"Z";
+}
+function bridgeMeta(px,py,s,R,wp,S){
+  if(R<0.12){
+    var q=0.3;
+    return "M"+f1(px*S)+" "+f1((py-q)*S)+"L"+f1((px+q)*S)+" "+f1(py*S)+"L"+f1(px*S)+" "+f1((py+q)*S)+"L"+f1((px-q)*S)+" "+f1(py*S)+"Z";
+  }
+  var w=Math.min(wp,0.9)*R;
+  var a=Math.SQRT2*R;
+  var rc=(a*a+w*w-R*R)/(2*(R-w));
+  var b=w+rc;
+  var CA=[px-s*R,py-R],CB=[px+s*R,py+R];
+  var ux=s/Math.SQRT2,uy=1/Math.SQRT2;
+  var vx=uy,vy=-ux;
+  var Cp=[px+b*vx,py+b*vy],Cm=[px-b*vx,py-b*vy];
+  function tp(C,Cc){var dx=Cc[0]-C[0],dy=Cc[1]-C[1],L=Math.sqrt(dx*dx+dy*dy);return [C[0]+R*dx/L,C[1]+R*dy/L];}
+  var TAp=tp(CA,Cp),TBp=tp(CB,Cp),TAm=tp(CA,Cm),TBm=tp(CB,Cm);
+  var quad=[TAp,TBp,TBm,TAm],sh=0;
+  for(var i=0;i<4;i++){var A2=quad[i],B2=quad[(i+1)%4];sh+=A2[0]*B2[1]-B2[0]*A2[1];}
+  var seq;
+  if(sh>=0)seq=[[TAp,Cp],[TBp,null],[TBm,Cm],[TAm,null]];
+  else seq=[[TAm,Cm],[TBm,null],[TBp,Cp],[TAp,null]];
+  var d="M"+f1(seq[0][0][0]*S)+" "+f1(seq[0][0][1]*S);
+  for(var i=0;i<4;i++){
+    var cur=seq[i],nxt=seq[(i+1)%4][0];
+    if(cur[1]){
+      var C=cur[1];
+      var cr=(cur[0][0]-C[0])*(nxt[1]-C[1])-(cur[0][1]-C[1])*(nxt[0]-C[0]);
+      d+="A"+f1(rc*S)+" "+f1(rc*S)+" 0 0 "+(cr>0?1:0)+" "+f1(nxt[0]*S)+" "+f1(nxt[1]*S);
+    }else{
+      d+="L"+f1(nxt[0]*S)+" "+f1(nxt[1]*S);
+    }
+  }
+  return d+"Z";
+}
+var S=24,lastVB="0 0 100 100",lastD="",lastW=100,lastH=100;
+function el(id){return document.getElementById(id);}
+function render(){
+  try{
+    var text=el("txt").value||"best parts";
+    var R=(+el("rnd").value)/100;
+    var sp=+el("sp").value,lg=+el("lg").value,scr=+el("sc").value;
+    var useBr=el("br").checked;
+    var wp=(+el("bw").value)/100;
+    var mode=el("cs").value;
+    el("rndv").textContent=Math.round(R*100);
+    el("spv").textContent=sp;el("lgv").textContent=lg;el("scv").textContent=scr;
+    el("bwv").textContent=Math.round(wp*100);
+    var built=buildCells(text,sp,lg,scr,mode);
+    if(built.count===0){el("prev").innerHTML="<span style='color:var(--sub)'>Typ enkele letters (a&#8211;z of A&#8211;Z)</span>";return;}
+    var cells=built.cells;
+    var mnx=1e9,mny=1e9,mxx=-1e9,mxy=-1e9;
+    for(var key in cells){
+      var p=key.split(",");var x=+p[0],y=+p[1];
+      if(x<mnx)mnx=x;if(y<mny)mny=y;if(x+1>mxx)mxx=x+1;if(y+1>mxy)mxy=y+1;
+    }
+    var loops=traceLoops(cells);
+    var d="";
+    for(var i=0;i<loops.length;i++)d+=loopPath(compress(loops[i]),R,S);
+    if(useBr){
+      var brs=findBridges(cells);
+      for(var b=0;b<brs.length;b++)d+=bridgeMeta(brs[b][0],brs[b][1],brs[b][2],R,wp,S);
+    }
+    var m=S;
+    lastW=(mxx-mnx)*S+2*m;lastH=(mxy-mny)*S+2*m;
+    var vb=f1(mnx*S-m)+" "+f1(mny*S-m)+" "+f1(lastW)+" "+f1(lastH);
+    lastVB=vb;lastD=d;
+    el("prev").innerHTML="<svg viewBox='"+vb+"' style='width:100%;max-width:"+Math.min(640,lastW)+"px;height:auto;display:block;color:var(--ink)' xmlns='http://www.w3.org/2000/svg'><path d='"+d+"' fill='currentColor' fill-rule='nonzero'></path></svg>";
+  }catch(err){
+    el("prev").innerHTML="<span style='color:#C0392B'>Er ging iets mis: "+String(err&&err.message?err.message:err)+"</span>";
+  }
+}
+function exportSVG(){
+  return "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\""+lastVB+"\" width=\""+Math.round(lastW)+"\" height=\""+Math.round(lastH)+"\"><path d=\""+lastD+"\" fill=\"#000000\" fill-rule=\"nonzero\"/></svg>";
+}
+function flash(t){var m=el("msg");m.textContent=t;setTimeout(function(){m.textContent="";},2500);}
+function saveBlob(blob,name){
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+}
+function init(){
+  el("dl").addEventListener("click",function(){
+    saveBlob(new Blob([exportSVG()],{type:"image/svg+xml"}),"gooey-type.svg");
+    flash("SVG gedownload");
+  });
+  el("png").addEventListener("click",function(){
+    var svg=exportSVG();
+    var url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml"}));
+    var img=new Image();
+    img.onload=function(){
+      var scale=Math.min(6,3000/lastW);
+      var c=document.createElement("canvas");
+      c.width=Math.round(lastW*scale);c.height=Math.round(lastH*scale);
+      var ctx=c.getContext("2d");
+      ctx.drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(function(b){saveBlob(b,"gooey-type.png");flash("PNG gedownload ("+c.width+" px breed)");},"image/png");
+    };
+    img.onerror=function(){flash("PNG-export mislukt");};
+    img.src=url;
+  });
+  el("cp").addEventListener("click",function(){
+    navigator.clipboard.writeText(exportSVG()).then(function(){flash("SVG-code gekopieerd");}).catch(function(){flash("Kopieren mislukt");});
+  });
+  el("reroll").addEventListener("click",function(){seed=(Math.random()*1e9)|0;render();});
+  el("br").addEventListener("change",render);
+  el("cs").addEventListener("change",render);
+  var ids=["txt","rnd","sp","lg","sc","bw"];
+  for(var i=0;i<ids.length;i++)el(ids[i]).addEventListener("input",render);
+  render();
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+})();
+</script>
+</body>
+</html>
